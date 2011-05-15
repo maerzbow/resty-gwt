@@ -134,14 +134,14 @@ public class Resource {
     }
 
     public Resource addQueryParam(String key, String value) {
-        key = URL.encodeComponent(key);
-        value = URL.encodeComponent(value);
+        key = URL.encodeQueryString(key);
+        value = URL.encodeQueryString(value);
         String q = query == null ? "" : query + "&";
         return new Resource(path, q + key + "=" + value, headers);
     }
 
     public Resource addQueryParams(String key, Iterable<String> values) {
-        key = URL.encodeComponent(key);
+        key = URL.encodeQueryString(key);
         StringBuilder q = new StringBuilder(query == null ? "" : query + "&");
         boolean ampersand = false;
         for (String value : values) {
@@ -150,7 +150,7 @@ public class Resource {
           } else {
             ampersand = true;
           }
-          value = URL.encodeComponent(value);
+          value = URL.encodeQueryString(value);
           q.append(key).append("=").append(value);
         }
 
