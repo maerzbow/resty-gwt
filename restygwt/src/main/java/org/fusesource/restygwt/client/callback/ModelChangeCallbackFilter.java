@@ -22,11 +22,10 @@ import java.util.logging.Logger;
 
 import org.fusesource.restygwt.client.Method;
 import org.fusesource.restygwt.client.ModelChange;
-import org.fusesource.restygwt.example.client.event.ModelChangeEventFactory;
+import org.fusesource.restygwt.example.client.event.ModelChangeEvent;
 
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.event.shared.EventBus;
-import com.google.gwt.event.shared.GwtEvent;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.json.client.JSONArray;
@@ -52,8 +51,8 @@ public class ModelChangeCallbackFilter implements CallbackFilter {
             RequestCallback callback) {
         final int code = response.getStatusCode();
 
-        if (code < Response.SC_MULTIPLE_CHOICES
-                && code >= Response.SC_OK) {
+        if (code < Response.SC_MULTIPLE_CHOICES // code < 300
+                && code >= Response.SC_OK) { // code >= 200
             String modelChangeIdentifier = method.getData().get(
                     ModelChange.MODEL_CHANGED_DOMAIN_KEY);
 
@@ -65,7 +64,7 @@ public class ModelChangeCallbackFilter implements CallbackFilter {
 
                 if (jsonArray != null) {
                     for (int i = 0; i < jsonArray.size(); ++i) {
-                        GwtEvent e = ModelChangeEventFactory.factory(
+                        ModelChangeEvent e = new ModelChangeEvent(
                                 jsonArray.get(i).isString().stringValue());
 
                         if (LogConfiguration.loggingIsEnabled()) {
@@ -75,7 +74,7 @@ public class ModelChangeCallbackFilter implements CallbackFilter {
                         eventBus.fireEvent(e);
                     }
                 } else {
-                    if (LogConfiguration.loggingIsEnabled()) {
+                    if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
                         Logger.getLogger(ModelChangeCallbackFilter.class.getName())
                         .info("found null array for model-change events");
                     }

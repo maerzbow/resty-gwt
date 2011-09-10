@@ -17,20 +17,21 @@
 package org.fusesource.restygwt.client.basic;
 
 import org.fusesource.restygwt.client.Defaults;
+import org.fusesource.restygwt.client.Dispatcher;
 import org.fusesource.restygwt.client.Method;
 import org.fusesource.restygwt.client.MethodCallback;
 import org.fusesource.restygwt.client.Resource;
 import org.fusesource.restygwt.client.RestServiceProxy;
-import org.fusesource.restygwt.client.cache.QueuableRuntimeCacheStorage;
 import org.fusesource.restygwt.client.cache.QueueableCacheStorage;
+import org.fusesource.restygwt.client.cache.VolatileQueueableCacheStorage;
 import org.fusesource.restygwt.client.callback.CachingCallbackFilter;
 import org.fusesource.restygwt.client.callback.CallbackFactory;
-import org.fusesource.restygwt.client.callback.FilterawareRequestCallback;
-import org.fusesource.restygwt.client.callback.FilterawareRetryingCallback;
+import org.fusesource.restygwt.client.callback.CallbackFilter;
 import org.fusesource.restygwt.client.callback.ModelChangeCallbackFilter;
+import org.fusesource.restygwt.client.callback.RetryingCallbackFactory;
 import org.fusesource.restygwt.client.dispatcher.CachingDispatcherFilter;
-import org.fusesource.restygwt.client.dispatcher.FilterawareDispatcher;
-import org.fusesource.restygwt.client.dispatcher.FilterawareRetryingDispatcher;
+import org.fusesource.restygwt.client.dispatcher.DefaultFilterawareDispatcher;
+import org.fusesource.restygwt.client.dispatcher.DispatcherFilter;
 
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.event.shared.EventBus;
@@ -86,21 +87,14 @@ public class FlakyTestGwt extends GWTTestCase {
          * configure RESTY to use cache, usually done in gin
          */
         final EventBus eventBus = new SimpleEventBus();
-        final QueueableCacheStorage cacheStorage = new QueuableRuntimeCacheStorage();
-        final FilterawareDispatcher dispatcher = new FilterawareRetryingDispatcher();
-
-        dispatcher.addFilter(new CachingDispatcherFilter(
-                cacheStorage,
-                new CallbackFactory() {
-                    public FilterawareRequestCallback createCallback(Method method) {
-                        final FilterawareRequestCallback retryingCallback = new FilterawareRetryingCallback(
-                                method);
-
-                        retryingCallback.addFilter(new CachingCallbackFilter(cacheStorage));
-                        retryingCallback.addFilter(new ModelChangeCallbackFilter(eventBus));
-                        return retryingCallback;
-                    }
-                }));
+        final QueueableCacheStorage cache = new VolatileQueueableCacheStorage();
+        
+        final CallbackFilter cachingCallbackFilter = new CachingCallbackFilter(cache);
+        final CallbackFactory callbackFactory = new RetryingCallbackFactory(cachingCallbackFilter,
+                new ModelChangeCallbackFilter(eventBus));
+        final DispatcherFilter cachingDispatcherFilter = new CachingDispatcherFilter(cache, callbackFactory);
+        
+        Dispatcher dispatcher = new DefaultFilterawareDispatcher(cachingDispatcherFilter);
 
         Defaults.setDispatcher(dispatcher);
     }

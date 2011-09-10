@@ -18,17 +18,18 @@
 
 package org.fusesource.restygwt.client.callback;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
 import org.fusesource.restygwt.client.Method;
 import org.fusesource.restygwt.client.cache.CacheKey;
+import org.fusesource.restygwt.client.cache.ComplexCacheKey;
 import org.fusesource.restygwt.client.cache.Domain;
 import org.fusesource.restygwt.client.cache.QueueableCacheStorage;
-import org.fusesource.restygwt.client.cache.UrlCacheKey;
 
+import com.google.gwt.core.client.GWT;
 import com.google.gwt.http.client.Request;
+import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.json.client.JSONArray;
@@ -38,7 +39,7 @@ import com.google.gwt.logging.client.LogConfiguration;
 
 public class CachingCallbackFilter implements CallbackFilter {
 
-    protected QueueableCacheStorage cache;
+    protected final QueueableCacheStorage cache;
 
     public CachingCallbackFilter(QueueableCacheStorage cache) {
         this.cache = cache;
@@ -54,13 +55,13 @@ public class CachingCallbackFilter implements CallbackFilter {
             RequestCallback callback) {
         final int code = response.getStatusCode();
 
-        final CacheKey ck = new UrlCacheKey(method.builder);
+        final CacheKey ck = cacheKey(method.builder);
         final List<RequestCallback> removedCallbacks = cache.removeCallbacks(ck);
 
-        if (removedCallbacks != null
-                && 1 < removedCallbacks.size()) {
-            // remove the first callback from list, as this is called explicitly
-            removedCallbacks.remove(0);
+        if (removedCallbacks != null){
+            //TODO ????? && 1 < removedCallbacks.size()) {
+            //TODO ????? remove the first callback from list, as this is called explicitly
+            //TODO ??????removedCallbacks.remove(0);
             // fetch the builders callback and wrap it with a new one, calling all others too
             final RequestCallback originalCallback = callback;
 
@@ -68,13 +69,13 @@ public class CachingCallbackFilter implements CallbackFilter {
                 @Override
                 public void onResponseReceived(Request request, Response response) {
                     // call the original callback
-                    if (LogConfiguration.loggingIsEnabled()) {
+                    if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
                         Logger.getLogger(CachingCallbackFilter.class.getName())
                                 .finer("call original callback for " + ck);
                     }
                     originalCallback.onResponseReceived(request, response);
 
-                    if (LogConfiguration.loggingIsEnabled()) {
+                    if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
                         Logger.getLogger(CachingCallbackFilter.class.getName())
                                 .finer("call "+ removedCallbacks.size()
                                         + " more queued callbacks for " + ck);
@@ -115,37 +116,46 @@ public class CachingCallbackFilter implements CallbackFilter {
                 }
             };
         } else {
-            if (LogConfiguration.loggingIsEnabled()) {
+            if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
                 Logger.getLogger(CachingCallbackFilter.class.getName()).finer("removed one or no " +
                         "callback for cachekey " + ck);
             }
         }
 
-        if (code < Response.SC_MULTIPLE_CHOICES
-                && code >= Response.SC_OK) {
-            if (LogConfiguration.loggingIsEnabled()) {
-                Logger.getLogger(CachingCallbackFilter.class.getName()).finer("cache to " + ck
-                        + ": " + response);
-            }
-            cache.putResult(ck, response, getCacheDomains(method));
+        if (code < Response.SC_MULTIPLE_CHOICES // code < 300
+                && code >= Response.SC_OK) { // code >= 200
+            cacheResult(method, response);
             return callback;
         }
 
-        if (LogConfiguration.loggingIsEnabled()) {
+        if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
             Logger.getLogger(CachingCallbackFilter.class.getName())
                     .info("cannot cache due to invalid response code: " + code);
         }
         return callback;
     }
 
+    protected CacheKey cacheKey(final RequestBuilder builder) {
+        return new ComplexCacheKey(builder);
+    }
+
+    protected void cacheResult(final Method method, final Response response) {
+        CacheKey cacheKey = cacheKey(method.builder);
+        if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
+            Logger.getLogger(CachingCallbackFilter.class.getName()).finer("cache to " + cacheKey
+                    + ": " + response);
+        }
+        cache.putResult(cacheKey, response, getCacheDomains(method));
+    }
+
     /**
      * when using the {@link Domain} annotation on services, we are able to group responses
-     * of a service to invalitate them later on more fine grained. this method resolves a
+     * of a service to invalidate them later on more fine grained. this method resolves a
      * possible ``domain`` to allow grouping.
      *
      * @return
      */
-    private List<String> getCacheDomains(final Method method) {
+    protected String[] getCacheDomains(final Method method) {
         if (null == method.getData().get(Domain.CACHE_DOMAIN_KEY)) return null;
 
         final JSONValue jsonValue = JSONParser.parseStrict(method.getData()
@@ -153,11 +163,11 @@ public class CachingCallbackFilter implements CallbackFilter {
         if (null == jsonValue) return null;
 
         JSONArray jsonArray = jsonValue.isArray();
-        final List<String> dd = new ArrayList<String>();
+        final String[] dd = new String[jsonArray.size()];
 
         if (null != jsonArray) {
             for (int i = 0; i < jsonArray.size(); ++i) {
-                dd.add(jsonArray.get(i).isString().stringValue());
+                dd[i] = jsonArray.get(i).isString().stringValue();
             }
 
             return dd;

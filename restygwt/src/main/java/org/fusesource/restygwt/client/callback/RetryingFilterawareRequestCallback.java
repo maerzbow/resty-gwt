@@ -17,12 +17,11 @@
  */
 package org.fusesource.restygwt.client.callback;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Logger;
 
 import org.fusesource.restygwt.client.Method;
 
+import com.google.gwt.core.client.GWT;
 import com.google.gwt.http.client.Request;
 import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
@@ -32,13 +31,13 @@ import com.google.gwt.logging.client.LogConfiguration;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
 
-public class FilterawareRetryingCallback implements FilterawareRequestCallback {
+public class RetryingFilterawareRequestCallback extends DefaultFilterawareRequestCallback {
 
     /**
      * Used by RetryingCallback
      * default value is 5
      */
-    protected static int numberOfRetries = 5;
+    protected int numberOfRetries = 5;
 
     /**
      * time to wait for reconnect upon failure
@@ -47,40 +46,34 @@ public class FilterawareRetryingCallback implements FilterawareRequestCallback {
 
     protected int currentRetryCounter = 0;
 
-    protected final Method method;
+    public RetryingFilterawareRequestCallback(Method method) {
+        super(method);
+    }
 
-    protected RequestCallback requestCallback;
-
-    final protected List<CallbackFilter> callbackFilters = new ArrayList<CallbackFilter>();
-
-    public FilterawareRetryingCallback(Method method) {
-        this.method = method;
-        // need to keep requestcallback here, as ``method.builder.getCallback()`` does not
-        // give the same callback later on
-        this.requestCallback = method.builder.getCallback();
+    public RetryingFilterawareRequestCallback(Method method,
+            int gracePeriodMillis, int numberOfRetries) {
+        super(method);
+        this.gracePeriod = gracePeriodMillis;
+        this.numberOfRetries = numberOfRetries;
     }
 
     @Override
     public final void onResponseReceived(Request request, Response response) {
-        if (response.getStatusCode() == Response.SC_UNAUTHORIZED) {
-            if (LogConfiguration.loggingIsEnabled()) {
-                Logger.getLogger(FilterawareRetryingCallback.class.getName()).severe("Unauthorized: "
-                        + method.builder.getUrl());
-                // HACK TODO handle this via a callbackfilter
-                Window.Location.assign("login.html" + Window.Location.getQueryString());
-            }
-        } else if (!(response.getStatusCode() < 300 && response.getStatusCode() >= 200)) {
+        int code = response.getStatusCode();
+        if (!(code < 300 && code >= 200)) {
             /*
-             * retry only on GET requests that are no redirects (301, 302)
+             * retry only on GET requests that are no redirects (301, 302, 303)
              */
-            if (response.getStatusCode() != 301
-                    && response.getStatusCode() != 302
-                    && response.getStatusCode() != 404
-                    && method.builder.getHTTPMethod().equals(RequestBuilder.GET.toString())) {
+            if (code != 301
+                    && code != 302
+                    && code != 303
+                    && code != 404
+                    && (method.builder == null // jsonp method do not have a builder !! 
+                            || method.builder.getHTTPMethod().equalsIgnoreCase("get"))) {
                 handleErrorGracefully(request, response, requestCallback);
             } else {
                 if (LogConfiguration.loggingIsEnabled()) {
-                    Logger.getLogger(FilterawareRetryingCallback.class.getName()).severe(
+                    Logger.getLogger(RetryingFilterawareRequestCallback.class.getName()).severe(
                             "ERROR with non-GET method: " + method.builder.getHTTPMethod() + " "
                             + method.builder.getUrl() + ", " + response.getStatusText());
                 }
@@ -96,44 +89,30 @@ public class FilterawareRetryingCallback implements FilterawareRequestCallback {
             return;
         } else {
             // filter only in success case for now
-            for (CallbackFilter f : callbackFilters) {
-                requestCallback = f.filter(method, response, requestCallback);
-            }
-            requestCallback.onResponseReceived(request, response);
+            runFilters(request, response);
         }
     }
 
-    /**
-     * replacement for the override of {@link #onResponseReceived(Request, Response)}
-     *
-     * but this is set to final because of the filter handling, this method has to be
-     * implemented instead.
-     *
-     * @param request
-     * @param response
-     */
-    protected void _onResponseReceived(Request request, Response response) {
-
-    }
-
-    /**
-     * TODO when is this used ?
-     */
-    @Override
-    public void onError(Request request, Throwable exception) {
-        if (LogConfiguration.loggingIsEnabled()) {
-            Logger.getLogger(FilterawareRetryingCallback.class.getName())
-                    .severe("call onError in " + this.getClass() + ". this should not happen...");
-        }
-        handleErrorGracefully(null, null, null);
-    }
+//    /**
+//     * TODO when is this used ? maybe just forward to requestCallback.onError
+//     */
+//    @Override
+//    public void onError(Request request, Throwable exception) {
+//        if (LogConfiguration.loggingIsEnabled()) {
+//            Logger.getLogger(RetryingFilterawareRequestCallback.class.getName())
+//                    .severe("call onError in " + this.getClass() + ". this should not happen...");
+//        }
+//        requestCallback.onError(request, exception);
+////        handleErrorGracefully(null, null, null);
+//    }
 
     public void handleErrorGracefully(Request request, Response response,
             RequestCallback requestCallback) {
         // error handling...:
         if (currentRetryCounter < numberOfRetries) {
-            if (LogConfiguration.loggingIsEnabled()) {
-                Logger.getLogger(FilterawareRetryingCallback.class.getName()).severe(
+            System.out.println("counter " + currentRetryCounter);
+            if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
+                Logger.getLogger(RetryingFilterawareRequestCallback.class.getName()).severe(
                         "error handling in progress for: " + method.builder.getHTTPMethod()
                         + " " + method.builder.getUrl());
             }
@@ -143,10 +122,12 @@ public class FilterawareRetryingCallback implements FilterawareRequestCallback {
             Timer t = new Timer() {
                 public void run() {
                     try {
+                        System.out.println("run . . ." + method.builder.getCallback());
+                                    
                         method.builder.send();
                     } catch (RequestException ex) {
-                        if (LogConfiguration.loggingIsEnabled()) {
-                            Logger.getLogger(FilterawareRetryingCallback.class.getName())
+                        if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
+                            Logger.getLogger(RetryingFilterawareRequestCallback.class.getName())
                                     .severe(ex.getMessage());
                         }
                     }
@@ -156,8 +137,8 @@ public class FilterawareRetryingCallback implements FilterawareRequestCallback {
             t.schedule(gracePeriod);
             gracePeriod = gracePeriod * 2;
         } else {
-            if (LogConfiguration.loggingIsEnabled()) {
-                Logger.getLogger(FilterawareRetryingCallback.class.getName()).severe("Request failed: "
+            if (GWT.isClient() && LogConfiguration.loggingIsEnabled()) {
+                Logger.getLogger(RetryingFilterawareRequestCallback.class.getName()).severe("Request failed: "
                         + method.builder.getHTTPMethod() + " " + method.builder.getUrl()
                         + " after " + currentRetryCounter + " tries.");
             }
@@ -171,7 +152,7 @@ public class FilterawareRetryingCallback implements FilterawareRequestCallback {
                         + method.builder.getUrl() + " after " + numberOfRetries + " retries."));
             } else {
                 // got no callback - well, goodbye
-                if (Window.confirm("error")) {
+                if (Window.confirm("something severly went wrong - error - reload page ?")) {
                     // Super severe error.
                     // reload app or redirect.
                     // ===> this breaks the app but that's by intention.
@@ -179,13 +160,5 @@ public class FilterawareRetryingCallback implements FilterawareRequestCallback {
                 }
             }
         }
-    }
-
-    /**
-     * put a filter in the "chain of responsibility" of all callbackfilters that will be
-     * performed on callback passing.
-     */
-    public void addFilter(CallbackFilter filter) {
-        callbackFilters.add(filter);
     }
 }

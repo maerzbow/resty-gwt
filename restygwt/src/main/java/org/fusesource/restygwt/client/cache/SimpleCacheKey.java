@@ -23,7 +23,7 @@ package org.fusesource.restygwt.client.cache;
  *
  * @author abalke
  */
-public final class SimpleCacheKey implements CacheKey {
+public class SimpleCacheKey implements CacheKey {
 
     private final String identifier;
 

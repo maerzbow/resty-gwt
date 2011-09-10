@@ -213,7 +213,14 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
             }
             JSONNumber number = value.isNumber();
             if (number == null) {
-                throw new DecodingException("Expected a json number, but was given: " + value);
+                JSONString str = value.isString();
+                if (str == null) {
+                    throw new DecodingException("Expected a json number r string, but was given: " + value);
+                }
+
+                // Doing a straight conversion from string to BigInteger will not work for large values
+                // So we convert to BigDecimal first and then convert it to BigInteger.
+                return new BigDecimal(str.stringValue()).toBigInteger();
             }
 
             // Doing a straight conversion from string to BigInteger will not work for large values
@@ -314,9 +321,21 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
     static public JSONObject toObject(JSONValue value) {
         JSONObject object = value.isObject();
         if (object == null) {
-            throw new DecodingException("Expected a json obejct, but was given: " + object);
+            throw new DecodingException("Expected a json object, but was given: " + object);
         }
         return object;
+    }
+
+    static public JSONObject toObjectFromWrapper(JSONValue value, String name) {
+        JSONObject object = value.isObject();
+        if (object == null) {
+            throw new DecodingException("Expected a json object, but was given: " + object);
+        }
+        JSONValue result = object.get(name);
+        if (result == null) {
+            throw new DecodingException("No wrapper with name '" + name + "' found in given: " + object);
+        }
+        return toObject(result);
     }
 
     static public <Type> List<Type> toList(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder) {

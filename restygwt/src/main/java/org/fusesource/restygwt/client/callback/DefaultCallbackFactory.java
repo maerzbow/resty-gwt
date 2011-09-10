@@ -16,14 +16,20 @@
 package org.fusesource.restygwt.client.callback;
 
 import org.fusesource.restygwt.client.Method;
-import org.fusesource.restygwt.client.cache.QueueableCacheStorage;
 
-public class CachingCallbackFactory implements CallbackFactory {
+/**
+ * default callback factory with a given set of callback filters which
+ * gets added to a new callback after creating it.
+ * 
+ * @author <a href="blog.mkristian.tk">Kristian</a>
+ *
+ */
+public class DefaultCallbackFactory implements CallbackFactory {
 
-    private final QueueableCacheStorage cacheStorage;
+    private final CallbackFilter[] callbackFilters;
 
-    public CachingCallbackFactory(QueueableCacheStorage cacheStorage) {
-        this.cacheStorage = cacheStorage;
+    public DefaultCallbackFactory(CallbackFilter... callbackFilter) {
+        this.callbackFilters = callbackFilter;
     }
 
     /**
@@ -33,10 +39,12 @@ public class CachingCallbackFactory implements CallbackFactory {
      * @return
      */
     public FilterawareRequestCallback createCallback(Method method) {
-        final FilterawareRequestCallback retryingCallback = new FilterawareRetryingCallback(
+        final FilterawareRequestCallback retryingCallback = new DefaultFilterawareRequestCallback(
                 method);
 
-        retryingCallback.addFilter(new CachingCallbackFilter(cacheStorage));
+        for(CallbackFilter filter: callbackFilters){
+            retryingCallback.addFilter(filter);
+        }
         return retryingCallback;
     }
 }
