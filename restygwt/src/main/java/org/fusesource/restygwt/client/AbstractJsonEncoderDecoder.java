@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2010 the original author or authors.
+ * Copyright (C) 2009-2011 the original author or authors.
  * See the notice.md file distributed with this work for additional
  * information regarding copyright ownership.
  *
@@ -333,7 +333,8 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         }
         JSONValue result = object.get(name);
         if (result == null) {
-            throw new DecodingException("No wrapper with name '" + name + "' found in given: " + object);
+            // no wrapper found but that is possible within the hierarchy
+            return toObject(value);
         }
         return toObject(result);
     }

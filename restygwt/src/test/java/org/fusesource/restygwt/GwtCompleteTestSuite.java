@@ -1,3 +1,21 @@
+/**
+ * Copyright (C) 2009-2011 the original author or authors.
+ * See the notice.md file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.fusesource.restygwt;
 
 
@@ -5,15 +23,19 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 
 import org.fusesource.restygwt.client.basic.CachingTestGwt;
-import org.fusesource.restygwt.client.basic.ExtendedRestTestGwt;
 import org.fusesource.restygwt.client.basic.FailingTestGwt;
 import org.fusesource.restygwt.client.basic.FlakyTestGwt;
+import org.fusesource.restygwt.client.basic.GenericsTestGwt;
+import org.fusesource.restygwt.client.basic.JsonCreatorWithSubtypes;
+import org.fusesource.restygwt.client.basic.ParameterizedTypeDTO;
+import org.fusesource.restygwt.client.basic.ParameterizedTypeServiceInterfaces;
 import org.fusesource.restygwt.client.basic.ResourcePassesHeadersTestGwt;
 import org.fusesource.restygwt.client.basic.ResourceTestGwt;
+import org.fusesource.restygwt.client.basic.SubResourceClientGeneration;
 import org.fusesource.restygwt.client.basic.TimeoutTestGwt;
 import org.fusesource.restygwt.client.cache.VolatileQueueableCacheStorageTestGwt;
 import org.fusesource.restygwt.client.codec.EncoderDecoderTestGwt;
-import org.fusesource.restygwt.client.complex.BigNumberTestGwt;
+import org.fusesource.restygwt.client.complex.JsonTypeIdResolver;
 
 import com.google.gwt.junit.tools.GWTTestSuite;
 
@@ -47,14 +69,17 @@ public class GwtCompleteTestSuite extends TestCase {
         suite.addTestSuite(FlakyTestGwt.class);
         suite.addTestSuite(TimeoutTestGwt.class);
         suite.addTestSuite(CachingTestGwt.class);
-        suite.addTestSuite(ExtendedRestTestGwt.class);
-        suite.addTestSuite(BigNumberTestGwt.class);
         suite.addTestSuite(ResourceTestGwt.class);
         suite.addTestSuite(ResourcePassesHeadersTestGwt.class);
         suite.addTestSuite(VolatileQueueableCacheStorageTestGwt.class);       
         suite.addTestSuite(FailingTestGwt.class);
         suite.addTestSuite(EncoderDecoderTestGwt.class);
-
+        suite.addTestSuite(GenericsTestGwt.class);
+        suite.addTestSuite(ParameterizedTypeDTO.class);
+        suite.addTestSuite(ParameterizedTypeServiceInterfaces.class);
+        suite.addTestSuite(SubResourceClientGeneration.class);
+        suite.addTestSuite(JsonTypeIdResolver.class);
+        suite.addTestSuite(JsonCreatorWithSubtypes.class);
         return suite;
     }
 }

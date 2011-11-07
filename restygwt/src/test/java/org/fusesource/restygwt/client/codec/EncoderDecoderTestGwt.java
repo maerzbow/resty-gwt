@@ -1,3 +1,21 @@
+/**
+ * Copyright (C) 2009-2011 the original author or authors.
+ * See the notice.md file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.fusesource.restygwt.client.codec;
 
 import java.math.BigInteger;
@@ -13,6 +31,8 @@ import com.google.gwt.junit.client.GWTTestCase;
 public class EncoderDecoderTestGwt extends GWTTestCase{
     
     public interface WrapperLibraryCodec extends JsonEncoderDecoder<LibraryWithWrapper>{
+    }
+    public interface ArrayWrapperLibraryCodec extends JsonEncoderDecoder<LibraryWithArrayWrapper>{
     }
     public interface PropertyLibraryCodec extends JsonEncoderDecoder<LibraryWithProperty>{
     }
@@ -47,6 +67,21 @@ public class EncoderDecoderTestGwt extends GWTTestCase{
 
         JSONValue encode = lc.encode(l);
         LibraryWithWrapper decode = lc.decode(encode);
+        assertEquals(l, decode);
+    }
+
+    public void testSubtypeArrayWrappeObjectWithSingleSubtype() {
+        ArrayWrapperLibraryCodec lc = GWT.create(ArrayWrapperLibraryCodec.class);
+        LibraryWithArrayWrapper l = new LibraryWithArrayWrapper();
+        ArrayList<LibraryItemWithArrayWrapper> libraryItems = new ArrayList<LibraryItemWithArrayWrapper>();
+        SpriteBasedItemWithArrayWrapper li = new SpriteBasedItemWithArrayWrapper();
+        li.id = "1";
+        li.imageRef = "src.png";
+        libraryItems.add(li);
+        l.items = libraryItems;
+
+        JSONValue encode = lc.encode(l);
+        LibraryWithArrayWrapper decode = lc.decode(encode);
         assertEquals(l, decode);
     }
 
@@ -88,10 +123,23 @@ public class EncoderDecoderTestGwt extends GWTTestCase{
     public void testCreators() {
         CreatorCodec codec = GWT.create(CreatorCodec.class);
         CredentialsWithCreator c = new CredentialsWithCreator("email", "password");
+        c.age = 12;
         JSONValue cJson = codec.encode(c);
         CredentialsWithCreator cRoundTrip = codec.decode(cJson);
         assertEquals("email", cRoundTrip.email);
         assertEquals("password", cRoundTrip.password);
+        assertEquals(12, cRoundTrip.age);
+    }
+
+    public void testCreatorsWithNullValue() {
+        CreatorCodec codec = GWT.create(CreatorCodec.class);
+        CredentialsWithCreator c = new CredentialsWithCreator(null, "password");
+        c.age = 12;
+        JSONValue cJson = codec.encode(c);
+        CredentialsWithCreator cRoundTrip = codec.decode(cJson);
+        assertNull(cRoundTrip.email);
+        assertEquals("password", cRoundTrip.password);
+        assertEquals(12, cRoundTrip.age);
     }
 
     public interface WrapperCodec extends JsonEncoderDecoder<CredentialsWithWrapperObject>{

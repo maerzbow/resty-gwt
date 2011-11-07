@@ -1,5 +1,7 @@
 /**
- * Copyright (C) 2010 the original author or authors.
+ * Copyright (C) 2009-2011 the original author or authors.
+ * See the notice.md file distributed with this work for additional
+ * information regarding copyright ownership.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,15 +68,6 @@ public class BasicTestGwt extends GWTTestCase {
         // wait... we are in async testing...
         delayTestFinish(10000);
 
-    }
-
-    public void testBooleanDto() {
-        try {
-            BooleanDtoService service = GWT.create(BooleanDtoService.class);
-        } catch (Exception e) {
-            fail(" generator failed at creating an interface which " +
-                    "has an intermediate interface between it and its RestService");
-        }
     }
 
 }
